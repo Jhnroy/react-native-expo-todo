@@ -1,11 +1,10 @@
 import { atom } from "jotai";
 
 export type Notes = {
-    id: number,
-    title: string,
-    content: string,
-    
-}
+  id: number;
+  title: string;
+  content: string;
+};
 
 export const TodoAtom = atom([
   {
@@ -23,5 +22,6 @@ export const TodoAtom = atom([
     title: "Task 3",
     content: "Content 3",
   },
-    
-])
+]);
+
+export const isContainerGridAtom = atom(false);
