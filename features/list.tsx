@@ -2,18 +2,31 @@ import { isContainerGridAtom, TodoAtom } from "@/atoms/atom";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import { router } from "expo-router";
 import { useAtom } from "jotai";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
+import { useState } from "react";
+import { FlatList, Modal, Text, TouchableOpacity, View } from "react-native";
 
 export default function ListView() {
   const [todos, setTodos] = useAtom(TodoAtom);
-  const [isGrid, setGrid] = useAtom(isContainerGridAtom);
+  const [isGrid] = useAtom(isContainerGridAtom);
 
-  const handleDelete = (id: number) => {
-    setTodos((prev) => prev.filter((item) => item.id !== id));
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const handleDelete = () => {
+    if (selectedId !== null) {
+      setTodos((prev) => prev.filter((item) => item.id !== selectedId));
+    }
+    setModalVisible(false);
+    setSelectedId(null);
+  };
+
+  const openModal = (id: number) => {
+    setSelectedId(id);
+    setModalVisible(true);
   };
 
   return (
-    <View className="flex-1 bg-white px-4 pt-4">
+    <View className="flex-1 bg-white px-5 pt-12 pb-6">
       <FlatList
         key={isGrid ? "grid" : "list"}
         data={todos}
@@ -28,7 +41,6 @@ export default function ListView() {
               bg-gray-100 
               p-5
               rounded-xl 
-              elevation-md
               mb-4
               ${isGrid ? "w-[48%]" : "w-full"}
             `}
@@ -39,19 +51,42 @@ export default function ListView() {
               <Text className="text-lg font-bold">{item.title}</Text>
             </TouchableOpacity>
 
-            {/* <Text className="text-lg font-bold">{item.title}</Text> */}
-
-            <TouchableOpacity className="absolute top-2 right-2">
-              <FontAwesome5
-                name="trash-alt"
-                size={24}
-                color="black"
-                onPress={() => handleDelete(item.id)}
-              />
+            <TouchableOpacity
+              className="absolute top-2 right-2"
+              onPress={() => openModal(item.id)}
+            >
+              <FontAwesome5 name="trash-alt" size={20} color="black" />
             </TouchableOpacity>
           </View>
         )}
       />
+
+      <Modal transparent visible={modalVisible} animationType="fade">
+        <View className="flex-1 bg-black/40 justify-center items-center">
+          <View className="bg-white w-80 p-6 rounded-2xl">
+            <Text className="text-lg font-bold mb-4 text-center">
+              Delete Task
+            </Text>
+            <Text className="mb-6">
+              Are you sure you want to delete this task?
+            </Text>
+
+            <View className="flex-row justify-center  gap-4">
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Text className="text-gray-500 bg-white py-2 px-4 rounded-2xl">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleDelete}>
+                <Text className="text-white bg-red-500 py-2 px-4 rounded-2xl font-bold">
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }

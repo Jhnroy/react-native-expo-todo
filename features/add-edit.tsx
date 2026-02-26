@@ -1,4 +1,5 @@
 import { TodoAtom } from "@/atoms/atom";
+import { router } from "expo-router";
 import { useAtom } from "jotai";
 import { useState } from "react";
 import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
@@ -11,6 +12,7 @@ export default function AddEdit() {
   const handleSave = () => {
     if (!title.trim() || !notes.trim()) {
       Alert.alert("Error", "Please fill in both Title and Notes");
+      router.back();
       return;
     }
 

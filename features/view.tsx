@@ -1,52 +1,73 @@
+import { TodoAtom } from "@/atoms/atom";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router, useLocalSearchParams } from "expo-router";
-import { Text, TouchableOpacity, View } from "react-native";
+import { useAtom } from "jotai";
+import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function ViewDetails() {
   const { id } = useLocalSearchParams();
   const numericId = id ? Number(id) : undefined;
-  const content = `Content ${numericId}`;
+
+  const [todos, setTodos] = useAtom(TodoAtom);
+
+  const currentTodo = todos.find((todo) => todo.id === numericId);
+
+  if (!currentTodo) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <Text className="text-lg font-semibold">Task not found</Text>
+      </View>
+    );
+  }
+
+  const handleDelete = () => {
+    const updatedTodos = todos.filter((todo) => todo.id !== numericId);
+    setTodos(updatedTodos);
+    router.back();
+  };
 
   return (
-    <View className="flex-1 p-5 gap-3 pb-safe">
-      <View className="flex-row justify-between">
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-blue-700 text-l">
-            <AntDesign
-              name="arrow-left"
-              size={24}
-              color="black"
-              className="gap-3"
-            />
-            Back
-          </Text>
+    <View className="flex-1 bg-white px-5 pt-12 pb-6">
+      <View className="flex-row justify-between items-center mb-6">
+        <TouchableOpacity
+          onPress={() => router.back()}
+          className="flex-row items-center gap-2"
+        >
+          <AntDesign name="arrow-left" size={20} color="blue" />
+          <Text className="text-blue-600 text-base font-medium">Back</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => router.push(`/${id}/edit`)}>
-          <Text className="text-blue-700 text-l">Edit</Text>
+          <Text className="text-blue-600 text-base font-semibold">Edit</Text>
         </TouchableOpacity>
       </View>
 
-      <View>
-        <Text>Title</Text>
-        <Text className="text-5xl bg-gray-100  p-3 rounded-lg elevation-md">
-          Task {numericId}
-        </Text>
-      </View>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View className="mb-6">
+          <Text className="text-gray-500 text-sm mb-2">Title</Text>
+          <View className="bg-gray-100 p-4 rounded-2xl shadow-sm">
+            <Text className="text-3xl font-bold text-gray-800">
+              {currentTodo.title}
+            </Text>
+          </View>
+        </View>
 
-      <View className="flex-1 mt-3">
-        <Text>Notes</Text>
-        <Text className="text-black mt-3 bg-gray-100  p-3 flex-1 rounded-lg elevation-md">
-          {content}
-        </Text>
-      </View>
-      <View className="">
-        <TouchableOpacity className="justify-center items-center">
-          <Text className="text-red-500 font-medium text-lg mb-3">
-            Delete Task
-          </Text>
-        </TouchableOpacity>
-      </View>
+        <View className="mb-8">
+          <Text className="text-gray-500 text-sm mb-2">Notes</Text>
+          <View className="bg-gray-100 p-4 rounded-2xl shadow-sm min-h-[150px]">
+            <Text className="text-base text-gray-700 leading-6">
+              {currentTodo.content}
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+
+      <TouchableOpacity
+        onPress={handleDelete}
+        className="bg-red-500 py-4 rounded-2xl items-center"
+      >
+        <Text className="text-white font-semibold text-lg">Delete Task</Text>
+      </TouchableOpacity>
     </View>
   );
 }

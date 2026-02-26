@@ -16,11 +16,15 @@ export default function TabLayout() {
         options={{
           header: () => {
             return (
-              <View className="flex-row pt-safe justify-between px-4 py-2 border-b">
+              <View className="flex-row pt-safe pb-safe justify-between px-4 py-2 border-b">
                 <Text className="font-bold text-lg">Task</Text>
 
                 <TouchableOpacity onPress={() => setIsGrid((prev) => !prev)}>
-                  <Feather name="grid" size={24} color="black" />
+                  {isGrid ? (
+                    <AntDesign name="unordered-list" size={24} color="black" />
+                  ) : (
+                    <Feather name="grid" size={24} color="black" />
+                  )}
                 </TouchableOpacity>
               </View>
             );
