@@ -3,7 +3,7 @@
 import { TodoAtom } from "@/atoms/atom";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -17,18 +17,22 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function Edit() {
   const [todos, setTodos] = useAtom(TodoAtom);
   const router = useRouter();
-  const { id } = useLocalSearchParams();
-  const numericId = id ? Number(id) : undefined;
+  const params = useLocalSearchParams();
 
-  const currentTodo = todos.find((todo) => todo.id === numericId);
+  const todoId = useMemo(() => {
+    if (!params.id) return undefined;
+    return Array.isArray(params.id) ? params.id[0] : params.id;
+  }, [params.id]);
 
-  const [title, setTitle] = useState("");
-  const [content, setContent] = useState("");
+  const currentTodo = todos.find((todo) => String(todo.id) === String(todoId));
+
+  const [title, setTitle] = useState<string>("");
+  const [content, setContent] = useState<string>("");
 
   useEffect(() => {
     if (currentTodo) {
-      setTitle(currentTodo.title);
-      setContent(currentTodo.content);
+      setTitle(currentTodo.title ?? "");
+      setContent(currentTodo.content ?? "");
     }
   }, [currentTodo]);
 
@@ -42,8 +46,12 @@ export default function Edit() {
 
   const handleEdit = () => {
     const updatedTodos = todos.map((todo) => {
-      if (todo.id === numericId) {
-        return { ...todo, title, content };
+      if (String(todo.id) === String(todoId)) {
+        return {
+          ...todo,
+          title: (title ?? "").trim(),
+          content: (content ?? "").trim(),
+        };
       }
       return todo;
     });
@@ -52,7 +60,8 @@ export default function Edit() {
     router.back();
   };
 
-  const isDisabled = title.trim() === "" || content.trim() === "";
+  const isDisabled =
+    (title ?? "").trim() === "" || (content ?? "").trim() === "";
 
   return (
     <SafeAreaView className="flex-1 bg-white">
@@ -61,7 +70,7 @@ export default function Edit() {
         className="flex-1"
       >
         <View>
-          <Text className="text-center text-2xl font-semibold">Edit</Text>
+          <Text className="text-center text-2xl font-semibold mt-4">Edit</Text>
         </View>
 
         <View className="flex-1 px-5 pt-6">
@@ -92,7 +101,7 @@ export default function Edit() {
                   placeholderTextColor="#94a3b8"
                   className="text-lg font-semibold text-gray-800"
                   value={title}
-                  onChangeText={setTitle}
+                  onChangeText={(text) => setTitle(text ?? "")}
                 />
               </View>
             </View>
@@ -107,7 +116,7 @@ export default function Edit() {
                   textAlignVertical="top"
                   className="text-base text-gray-700 flex-1"
                   value={content}
-                  onChangeText={setContent}
+                  onChangeText={(text) => setContent(text ?? "")}
                 />
               </View>
             </View>
