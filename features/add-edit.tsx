@@ -1,66 +1,160 @@
+"use client";
+
 import { TodoAtom } from "@/atoms/atom";
-import { router } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useAtom } from "jotai";
-import { useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { useEffect, useMemo, useState } from "react";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-export default function AddEdit() {
+export default function AddEditScreen({ id }: { id?: string }) {
   const [todos, setTodos] = useAtom(TodoAtom);
-  const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
+  const router = useRouter();
+  const params = useLocalSearchParams();
 
-  const handleSave = () => {
-    if (!title.trim() || !notes.trim()) {
-      Alert.alert("Error", "Please fill in both Title and Notes");
-      router.back();
+  const todoId = useMemo(() => {
+    if (!params.id) return undefined;
+    return Array.isArray(params.id) ? params.id[0] : params.id;
+  }, [params.id]);
+
+  const currentTodo = todos.find((todo) => String(todo.id) === String(todoId));
+
+  const [title, setTitle] = useState<string>("");
+  const [content, setContent] = useState<string>("");
+
+  useEffect(() => {
+    if (currentTodo) {
+      setTitle(currentTodo.title ?? "");
+      setContent(currentTodo.content ?? "");
+    }
+  }, [currentTodo]);
+
+  const handleUpsert = () => {
+    if (!id) {
+      if (!title.trim() || !content.trim()) {
+        Alert.alert("Error", "Please fill in both Title and Notes");
+        router.back();
+        return;
+      }
+
+      const newTask = {
+        id: Date.now(),
+        title,
+        content,
+      };
+      setTodos([...todos, newTask]);
+
+      Alert.alert("Success", "Task saved successfully!");
+      setTitle("");
+      setContent("");
+
       return;
     }
 
-    const newTask = {
-      id: Date.now(),
-      title,
-      notes,
-    };
+    const updatedTodos = todos.map((todo) => {
+      if (String(todo.id) === String(todoId)) {
+        return {
+          ...todo,
+          title: (title ?? "").trim(),
+          content: (content ?? "").trim(),
+        };
+      }
+      return todo;
+    });
 
-    setTodos([...todos, newTask]);
-
-    Alert.alert("Success", "Task saved successfully!");
-    setTitle("");
-    setNotes("");
+    setTodos(updatedTodos);
+    router.back();
   };
 
+  const isDisabled =
+    (title ?? "").trim() === "" || (content ?? "").trim() === "";
+
   return (
-    <View className="flex-1 bg-gray-100 px-6 pt-10">
-      <Text className="text-lg font-semibold mb-2"> Title </Text>
-      <TextInput
-        placeholder="Enter task title"
-        placeholderTextColor="#94a3b8"
-        className="border-gray-00 rounded-2xl px-5 py-2 text-lg mb-6 bg-[#0000000D]"
-        value={title}
-        onChangeText={setTitle}
-      />
-
-      <Text className="text-lg font-semibold mb-2"> Notes </Text>
-      <TextInput
-        placeholder="Enter notes about the task"
-        placeholderTextColor="#94a3b8"
-        multiline
-        textAlignVertical="top"
-        className="border-gray-200 rounded-2xl px-5 py-4 text-lg h-80 bg-[#0000000D] "
-        value={notes}
-        onChangeText={setNotes}
-      />
-
-      <View className="absolute bottom-10 left-6 right-6">
-        <TouchableOpacity
-          className="bg-blue-600 py-5 rounded-2xl shadow-lg"
-          onPress={handleSave}
-        >
-          <Text className="text-center text-white text-lg font-semibold">
-            Save
+    <SafeAreaView className="flex-1 bg-white">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        className="flex-1"
+      >
+        <View>
+          <Text className="text-center text-2xl font-semibold mt-4">
+            {id ? "Edit" : "Add"}
           </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+        </View>
+
+        <View className="flex-1 px-5 pt-6">
+          {id && (
+            <View className="flex-row justify-between items-center mb-8">
+              <TouchableOpacity onPress={() => router.back()}>
+                <Text className="text-blue-600 text-base font-medium">
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity onPress={handleUpsert} disabled={isDisabled}>
+                <Text
+                  className={`text-base font-semibold ${
+                    isDisabled ? "text-gray-400" : "text-blue-600"
+                  }`}
+                >
+                  {id ? "Update" : "Save"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View className="flex-1">
+            <View className="mb-6">
+              <Text className="text-gray-500 text-sm mb-2">Title</Text>
+              <View className="bg-gray-100 rounded-2xl px-4 py-4">
+                <TextInput
+                  placeholder="Enter task title"
+                  placeholderTextColor="#94a3b8"
+                  className="text-lg font-semibold text-gray-800"
+                  value={title}
+                  onChangeText={(text) => setTitle(text ?? "")}
+                />
+              </View>
+            </View>
+
+            <View className="flex-1">
+              <Text className="text-gray-500 text-sm mb-2">Content</Text>
+              <View className="bg-gray-100 rounded-2xl px-4 py-4 flex-1">
+                <TextInput
+                  placeholder="Enter content about the task"
+                  placeholderTextColor="#94a3b8"
+                  multiline
+                  textAlignVertical="top"
+                  className="text-base text-gray-700 flex-1"
+                  value={content}
+                  onChangeText={(text) => setContent(text ?? "")}
+                />
+              </View>
+            </View>
+          </View>
+        </View>
+
+        <View className="px-5 pb-6 bg-white">
+          <TouchableOpacity
+            onPress={handleUpsert}
+            disabled={isDisabled}
+            className={`py-4 rounded-2xl items-center ${
+              isDisabled ? "bg-gray-400" : "bg-blue-600"
+            }`}
+          >
+            <Text className="text-white font-semibold text-lg">
+              Save changes
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }

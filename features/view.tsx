@@ -1,7 +1,9 @@
 import { TodoAtom } from "@/atoms/atom";
+import { CustomModal } from "@/components/custom-modal";
 import AntDesign from "@expo/vector-icons/AntDesign";
 import { router, useLocalSearchParams } from "expo-router";
 import { useAtom } from "jotai";
+import { useState } from "react";
 import { ScrollView, Text, TouchableOpacity, View } from "react-native";
 
 export default function ViewDetails() {
@@ -9,6 +11,8 @@ export default function ViewDetails() {
   const numericId = id ? Number(id) : undefined;
 
   const [todos, setTodos] = useAtom(TodoAtom);
+
+  const [modalVisible, setModalVisible] = useState(false);
 
   const currentTodo = todos.find((todo) => todo.id === numericId);
 
@@ -63,11 +67,16 @@ export default function ViewDetails() {
       </ScrollView>
 
       <TouchableOpacity
-        onPress={handleDelete}
+        onPress={() => setModalVisible(true)}
         className="bg-red-500 py-4 rounded-2xl items-center"
       >
         <Text className="text-white font-semibold text-lg">Delete Task</Text>
       </TouchableOpacity>
+      <CustomModal
+        modalVisible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        onDelete={handleDelete}
+      />
     </View>
   );
 }

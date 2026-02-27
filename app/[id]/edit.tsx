@@ -1,5 +1,7 @@
-import Edit from "@/features/edit";
+import AddEditScreen from "@/features/add-edit";
+import { useLocalSearchParams } from "expo-router";
 
 export default function EditRoute() {
-  return <Edit />;
+  const { id } = useLocalSearchParams<{ id: string }>();
+  return <AddEditScreen id={id} />;
 }
