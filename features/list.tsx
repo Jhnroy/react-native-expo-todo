@@ -1,33 +1,85 @@
-import { isContainerGridAtom, TodoAtom } from "@/atoms/atom";
+"use client";
+
 import { CustomModal } from "@/components/custom-modal";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
+import axios from "axios";
 import { router } from "expo-router";
-import { useAtom } from "jotai";
-import { useState } from "react";
-import { FlatList, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
 export default function ListView() {
-  const [todos, setTodos] = useAtom(TodoAtom);
-  const [isGrid] = useAtom(isContainerGridAtom);
-
+  const [todos, setTodos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [modalVisible, setModalVisible] = useState(false);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
-  const handleDelete = () => {
-    if (selectedId !== null) {
-      setTodos((prev) => prev.filter((item) => item.id !== selectedId));
+  const isGrid = false;
+
+  const API_URL = process.env.EXPO_PUBLIC_API_URL + "/todos";
+  console.log("API_URL:", API_URL);
+
+  const fetchTodos = useCallback(async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get(API_URL!);
+      console.log("Fetched todos:", response.data);
+      setTodos(response.data.data); // Use the data array directly
+    } catch (error: any) {
+      console.error("Fetch error:", error.message);
+      console.error("Error response:", error.response?.data);
+      Alert.alert(
+        "Error",
+        "Failed to fetch tasks. Check your API URL and network.",
+      );
+    } finally {
+      setLoading(false);
     }
-    setModalVisible(false);
-    setSelectedId(null);
+  }, [API_URL]);
+
+  useEffect(() => {
+    fetchTodos();
+  }, [fetchTodos]);
+
+  // Delete a todo by documentId
+  const handleDelete = async () => {
+    if (!selectedDocId) return;
+
+    try {
+      await axios.delete(`${API_URL}/${selectedDocId}`);
+      setTodos((prev) =>
+        prev.filter((item) => item.documentId !== selectedDocId),
+      );
+      setModalVisible(false);
+      setSelectedDocId(null);
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Failed to delete task");
+    }
   };
 
-  const openModal = (id: number) => {
-    setSelectedId(id);
+  const openModal = (docId: string) => {
+    setSelectedDocId(docId);
     setModalVisible(true);
   };
 
   const closeModal = () => {
     setModalVisible(false);
+    setSelectedDocId(null);
+  };
+
+  if (loading) {
+    return (
+      <View className="flex-1 justify-center items-center">
+        <ActivityIndicator size="large" color="blue" />
+      </View>
+    );
   }
 
   return (
@@ -36,7 +88,7 @@ export default function ListView() {
         key={isGrid ? "grid" : "list"}
         data={todos}
         numColumns={isGrid ? 2 : 1}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.documentId}
         columnWrapperStyle={
           isGrid ? { justifyContent: "space-between" } : undefined
         }
@@ -51,14 +103,14 @@ export default function ListView() {
             `}
           >
             <TouchableOpacity
-              onPress={() => router.push(`/${item.id}/view-details`)}
+              onPress={() => router.push(`/${item.documentId}/view-details`)}
             >
               <Text className="text-lg font-bold">{item.title}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               className="absolute top-2 right-2"
-              onPress={() => openModal(item.id)}
+              onPress={() => openModal(item.documentId)}
             >
               <FontAwesome5 name="trash-alt" size={20} color="black" />
             </TouchableOpacity>
@@ -66,7 +118,7 @@ export default function ListView() {
         )}
       />
 
-      <CustomModal 
+      <CustomModal
         modalVisible={modalVisible}
         onClose={closeModal}
         onDelete={handleDelete}
