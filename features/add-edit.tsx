@@ -118,11 +118,11 @@ export default function AddEditScreen() {
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         className="flex-1"
       >
-        <View className="items-center mt-4">
+        {/* <View className="items-center mt-4">
           <Text className="text-2xl font-semibold">
             {isEdit ? "Edit Task" : "Add Task"}
           </Text>
-        </View>
+        </View> */}
 
         <View className="flex-1 px-5 pt-6">
           <View className="mb-6">

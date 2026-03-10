@@ -1,10 +1,9 @@
 "use client";
 
-import { CustomModal } from "@/components/custom-modal";
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import axios from "axios";
-import { router } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { router, useFocusEffect } from "expo-router";
+import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,15 +11,16 @@ import {
   Text,
   TouchableOpacity,
   View,
+  useColorScheme,
 } from "react-native";
 
 export default function ListView() {
   const [todos, setTodos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
 
-  const isGrid = false;
+  const isGrid = true;
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === "dark";
 
   const API_URL = process.env.EXPO_PUBLIC_API_URL + "/todos";
   console.log("API_URL:", API_URL);
@@ -29,11 +29,9 @@ export default function ListView() {
     try {
       setLoading(true);
       const response = await axios.get(API_URL!);
-      console.log("Fetched todos:", response.data);
-      setTodos(response.data.data); // Use the data array directly
+      setTodos(response.data.data);
     } catch (error: any) {
       console.error("Fetch error:", error.message);
-      console.error("Error response:", error.response?.data);
       Alert.alert(
         "Error",
         "Failed to fetch tasks. Check your API URL and network.",
@@ -43,47 +41,66 @@ export default function ListView() {
     }
   }, [API_URL]);
 
-  useEffect(() => {
-    fetchTodos();
-  }, [fetchTodos]);
+  useFocusEffect(
+    useCallback(() => {
+      fetchTodos();
+    }, [fetchTodos]),
+  );
 
-  // Delete a todo by documentId
-  const handleDelete = async () => {
-    if (!selectedDocId) return;
-
-    try {
-      await axios.delete(`${API_URL}/${selectedDocId}`);
-      setTodos((prev) =>
-        prev.filter((item) => item.documentId !== selectedDocId),
-      );
-      setModalVisible(false);
-      setSelectedDocId(null);
-    } catch (error) {
-      console.error(error);
-      Alert.alert("Error", "Failed to delete task");
-    }
-  };
-
-  const openModal = (docId: string) => {
-    setSelectedDocId(docId);
-    setModalVisible(true);
-  };
-
-  const closeModal = () => {
-    setModalVisible(false);
-    setSelectedDocId(null);
+  const handleDelete = (docId: string) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this task?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await axios.delete(`${API_URL}/${docId}`);
+              setTodos((prev) =>
+                prev.filter((item) => item.documentId !== docId),
+              );
+              Alert.alert("Success", "Task deleted successfully!");
+            } catch (error: any) {
+              console.error(error);
+              Alert.alert("Error", "Failed to delete task");
+            } finally {
+              setLoading(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   if (loading) {
     return (
-      <View className="flex-1 justify-center items-center">
-        <ActivityIndicator size="large" color="blue" />
+      <View
+        style={{
+          flex: 1,
+          justifyContent: "center",
+          alignItems: "center",
+          backgroundColor: isDark ? "#121212" : "#FFF",
+        }}
+      >
+        <ActivityIndicator size="large" color={isDark ? "#fff" : "blue"} />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-white px-5 pt-12 pb-6">
+    <View
+      style={{
+        flex: 1,
+        paddingHorizontal: 20,
+        paddingTop: 48,
+        paddingBottom: 24,
+        backgroundColor: isDark ? "#121212" : "#FFF",
+      }}
+    >
       <FlatList
         key={isGrid ? "grid" : "list"}
         data={todos}
@@ -94,34 +111,40 @@ export default function ListView() {
         }
         renderItem={({ item }) => (
           <View
-            className={`
-              bg-gray-100 
-              p-5
-              rounded-xl 
-              mb-4
-              ${isGrid ? "w-[48%]" : "w-full"}
-            `}
+            style={{
+              backgroundColor: isDark ? "#1E1E1E" : "#F3F3F3",
+              padding: 20,
+              borderRadius: 16,
+              marginBottom: 16,
+              width: isGrid ? "48%" : "100%",
+            }}
           >
             <TouchableOpacity
               onPress={() => router.push(`/${item.documentId}/view-details`)}
             >
-              <Text className="text-lg font-bold">{item.title}</Text>
+              <Text
+                style={{
+                  fontSize: 16,
+                  fontWeight: "bold",
+                  color: isDark ? "#FFF" : "#000",
+                }}
+              >
+                {item.title}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              className="absolute top-2 right-2"
-              onPress={() => openModal(item.documentId)}
+              style={{ position: "absolute", top: 8, right: 8 }}
+              onPress={() => handleDelete(item.documentId)}
             >
-              <FontAwesome5 name="trash-alt" size={20} color="black" />
+              <FontAwesome5
+                name="trash-alt"
+                size={20}
+                color={isDark ? "#FFF" : "black"}
+              />
             </TouchableOpacity>
           </View>
         )}
-      />
-
-      <CustomModal
-        modalVisible={modalVisible}
-        onClose={closeModal}
-        onDelete={handleDelete}
       />
     </View>
   );
