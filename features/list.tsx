@@ -3,43 +3,56 @@
 import FontAwesome5 from "@expo/vector-icons/FontAwesome5";
 import axios from "axios";
 import { router, useFocusEffect } from "expo-router";
-import { useCallback, useState } from "react";
+import { useAtom } from "jotai";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   useColorScheme,
 } from "react-native";
+import { isContainerGridAtom } from "../atoms/atom"; // import your atom
 
 export default function ListView() {
-  const [todos, setTodos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const isGrid = true;
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
 
-  const API_URL = process.env.EXPO_PUBLIC_API_URL + "/todos";
-  console.log("API_URL:", API_URL);
+  const [todos, setTodos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
-  const fetchTodos = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get(API_URL!);
-      setTodos(response.data.data);
-    } catch (error: any) {
-      console.error("Fetch error:", error.message);
-      Alert.alert(
-        "Error",
-        "Failed to fetch tasks. Check your API URL and network.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [API_URL]);
+  const [isGrid] = useAtom(isContainerGridAtom);
+  console.log(isGrid); // use Jotai atom here
+
+  const API_URL = process.env.EXPO_PUBLIC_API_URL + "/todos";
+
+  const fetchTodos = useCallback(
+    async (searchText: string = "") => {
+      try {
+        setLoading(true);
+
+        let url = API_URL;
+
+        if (searchText) {
+          url = `${API_URL}?filters[title][$containsi]=${searchText}`;
+        }
+
+        const response = await axios.get(url);
+
+        setTodos(response.data.data);
+      } catch (error: any) {
+        console.error(error);
+        Alert.alert("Error", "Failed to fetch tasks");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [API_URL],
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -47,33 +60,33 @@ export default function ListView() {
     }, [fetchTodos]),
   );
 
+  useEffect(() => {
+    const delay = setTimeout(() => {
+      fetchTodos(search);
+    }, 500);
+
+    return () => clearTimeout(delay);
+  }, [search, fetchTodos]);
+
   const handleDelete = (docId: string) => {
-    Alert.alert(
-      "Confirm Delete",
-      "Are you sure you want to delete this task?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setLoading(true);
-              await axios.delete(`${API_URL}/${docId}`);
-              setTodos((prev) =>
-                prev.filter((item) => item.documentId !== docId),
-              );
-              Alert.alert("Success", "Task deleted successfully!");
-            } catch (error: any) {
-              console.error(error);
-              Alert.alert("Error", "Failed to delete task");
-            } finally {
-              setLoading(false);
-            }
-          },
+    Alert.alert("Confirm Delete", "Delete this task?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await axios.delete(`${API_URL}/${docId}`);
+
+            setTodos((prev) =>
+              prev.filter((item) => item.documentId !== docId),
+            );
+          } catch {
+            Alert.alert("Error", "Delete failed");
+          }
         },
-      ],
-    );
+      },
+    ]);
   };
 
   if (loading) {
@@ -86,7 +99,7 @@ export default function ListView() {
           backgroundColor: isDark ? "#121212" : "#FFF",
         }}
       >
-        <ActivityIndicator size="large" color={isDark ? "#fff" : "blue"} />
+        <ActivityIndicator size="large" color={isDark ? "#FFF" : "blue"} />
       </View>
     );
   }
@@ -97,18 +110,48 @@ export default function ListView() {
         flex: 1,
         paddingHorizontal: 20,
         paddingTop: 48,
-        paddingBottom: 24,
         backgroundColor: isDark ? "#121212" : "#FFF",
       }}
     >
+      {/* SEARCH */}
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          backgroundColor: isDark ? "#1E1E1E" : "#F3F3F3",
+          borderRadius: 12,
+          paddingHorizontal: 12,
+          marginBottom: 20,
+        }}
+      >
+        <FontAwesome5
+          name="search"
+          size={16}
+          color={isDark ? "#FFF" : "#000"}
+        />
+
+        <TextInput
+          placeholder="Search task..."
+          placeholderTextColor={isDark ? "#AAA" : "#666"}
+          value={search}
+          onChangeText={setSearch}
+          style={{
+            flex: 1,
+            padding: 10,
+            color: isDark ? "#FFF" : "#000",
+            marginLeft: 8,
+          }}
+        />
+      </View>
+
       <FlatList
-        key={isGrid ? "grid" : "list"}
         data={todos}
         numColumns={isGrid ? 2 : 1}
-        keyExtractor={(item) => item.documentId}
+        key={isGrid ? "g" : "l"}
         columnWrapperStyle={
           isGrid ? { justifyContent: "space-between" } : undefined
         }
+        keyExtractor={(item) => item.documentId}
         renderItem={({ item }) => (
           <View
             style={{
@@ -117,6 +160,7 @@ export default function ListView() {
               borderRadius: 16,
               marginBottom: 16,
               width: isGrid ? "48%" : "100%",
+              position: "relative",
             }}
           >
             <TouchableOpacity
@@ -140,7 +184,7 @@ export default function ListView() {
               <FontAwesome5
                 name="trash-alt"
                 size={20}
-                color={isDark ? "#FFF" : "black"}
+                color={isDark ? "#FFF" : "#000"}
               />
             </TouchableOpacity>
           </View>
